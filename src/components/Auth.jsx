@@ -18,11 +18,15 @@ const Auth = ({ onAuthSuccess }) => {
     setMessage(null)
 
     try {
+      // 현재 URL을 기준으로 리다이렉트 URL 설정
+      const redirectTo = window.location.origin + window.location.pathname
+      
       // 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: redirectTo,
           data: {
             nickname: nickname || email.split('@')[0],
           },

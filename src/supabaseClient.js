@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-// 디버깅: 환경변수 확인
+// 디버깅: 환경변수 확인 (개발 및 프로덕션 모두)
+const hasUrl = !!import.meta.env.VITE_SUPABASE_URL
+const hasKey = !!import.meta.env.VITE_SUPABASE_ANON_KEY
+
 if (import.meta.env.DEV) {
   console.log('🔍 환경변수 확인:', {
-    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? '✅ 설정됨' : '❌ 없음',
-    VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ 설정됨' : '❌ 없음',
+    VITE_SUPABASE_URL: hasUrl ? '✅ 설정됨' : '❌ 없음',
+    VITE_SUPABASE_ANON_KEY: hasKey ? '✅ 설정됨' : '❌ 없음',
     mode: import.meta.env.MODE,
   })
+} else if (!hasUrl || !hasKey) {
+  // 프로덕션에서도 환경변수 없을 때 경고
+  console.error(
+    '❌ 프로덕션 빌드 오류: Supabase 환경변수가 설정되지 않았습니다.\n' +
+    'GitHub Secrets를 확인하고 재배포하세요:\n' +
+    'https://github.com/aoperat/pv/settings/secrets/actions'
+  )
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
