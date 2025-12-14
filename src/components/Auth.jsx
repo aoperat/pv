@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { User, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
+import { validateNickname, validatePassword, validateEmail, getPasswordStrength } from '../utils/validation'
 
 const Auth = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true)
@@ -17,18 +18,45 @@ const Auth = ({ onAuthSuccess }) => {
     setError(null)
     setMessage(null)
 
+    // 입력값 검증
+    const emailValidation = validateEmail(email)
+    if (!emailValidation.valid) {
+      setError(emailValidation.error)
+      setLoading(false)
+      return
+    }
+
+    const nicknameValidation = validateNickname(nickname)
+    if (!nicknameValidation.valid) {
+      setError(nicknameValidation.error)
+      setLoading(false)
+      return
+    }
+
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.error)
+      setLoading(false)
+      return
+    }
+
     try {
       // 현재 URL을 기준으로 리다이렉트 URL 설정
-      const redirectTo = window.location.origin + window.location.pathname
-      
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+      const redirectTo = isProduction
+        ? 'https://aoperat.github.io/pv/'
+        : window.location.origin + window.location.pathname
+
+      const validatedNickname = nicknameValidation.value || email.split('@')[0]
+
       // 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
+        email: emailValidation.value,
         password,
         options: {
           emailRedirectTo: redirectTo,
           data: {
-            nickname: nickname || email.split('@')[0],
+            nickname: validatedNickname,
           },
         },
       })
@@ -42,7 +70,7 @@ const Auth = ({ onAuthSuccess }) => {
           .insert([
             {
               id: authData.user.id,
-              nickname: nickname || email.split('@')[0],
+              nickname: validatedNickname,
               created_at: new Date().toISOString(),
             },
           ])

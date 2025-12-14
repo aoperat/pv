@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
-import BareunPelvicApp from './components/BareunPelvicApp'
+import PelvicHealthApp from './components/PelvicHealthApp'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -48,7 +48,7 @@ function App() {
     return <Auth onAuthSuccess={handleAuthSuccess} />
   }
 
-  return <BareunPelvicApp user={user} onSignOut={handleSignOut} />
+  return <PelvicHealthApp user={user} onSignOut={handleSignOut} />
 }
 
 export default App

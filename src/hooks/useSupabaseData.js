@@ -1,66 +1,79 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 
 // 저장한 운동 목록 관리
 export const useSavedRoutines = (userId) => {
   const [savedItems, setSavedItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
+  const loadSavedRoutines = useCallback(async () => {
     if (!userId) {
       setLoading(false)
       return
     }
 
-    loadSavedRoutines()
-  }, [userId])
+    setLoading(true)
+    setError(null)
 
-  const loadSavedRoutines = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('user_routines')
         .select('exercise_id')
         .eq('user_id', userId)
 
-      if (error) {
-        // PGRST205는 테이블이 없을 때 발생하는 에러
-        if (error.code === 'PGRST205') {
+      if (fetchError) {
+        if (fetchError.code === 'PGRST205') {
           console.warn(
             '⚠️ user_routines 테이블이 없습니다.\n' +
             'Supabase 대시보드 > SQL Editor에서 supabase-setup.sql 파일의 내용을 실행하세요.'
           )
-          return // 에러를 던지지 않고 빈 배열 반환
+          return
         }
-        throw error
+        throw fetchError
       }
 
       setSavedItems(data?.map((item) => item.exercise_id) || [])
-    } catch (error) {
-      console.error('Error loading saved routines:', error)
+    } catch (err) {
+      console.error('Error loading saved routines:', err)
+      setError(err.message || '저장된 루틴을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    loadSavedRoutines()
+  }, [loadSavedRoutines])
 
   const toggleSave = async (exerciseId) => {
-    if (!userId) return
+    if (!userId || saving) return
 
     const isSaved = savedItems.includes(exerciseId)
+    const previousItems = [...savedItems]
+
+    // 낙관적 업데이트
+    setSaving(true)
+    setError(null)
+
+    if (isSaved) {
+      setSavedItems(savedItems.filter((id) => id !== exerciseId))
+    } else {
+      setSavedItems([...savedItems, exerciseId])
+    }
 
     try {
       if (isSaved) {
-        // 삭제
-        const { error } = await supabase
+        const { error: deleteError } = await supabase
           .from('user_routines')
           .delete()
           .eq('user_id', userId)
           .eq('exercise_id', exerciseId)
 
-        if (error) throw error
-        setSavedItems(savedItems.filter((id) => id !== exerciseId))
+        if (deleteError) throw deleteError
       } else {
-        // 추가
-        const { error } = await supabase.from('user_routines').insert([
+        const { error: insertError } = await supabase.from('user_routines').insert([
           {
             user_id: userId,
             exercise_id: exerciseId,
@@ -68,89 +81,113 @@ export const useSavedRoutines = (userId) => {
           },
         ])
 
-        if (error) throw error
-        setSavedItems([...savedItems, exerciseId])
+        if (insertError) throw insertError
       }
-    } catch (error) {
-      // PGRST205는 테이블이 없을 때 발생하는 에러
-      if (error.code === 'PGRST205') {
-        alert(
-          '⚠️ user_routines 테이블이 없습니다.\n\n' +
+    } catch (err) {
+      // 롤백
+      setSavedItems(previousItems)
+
+      if (err.code === 'PGRST205') {
+        setError('테이블이 설정되지 않았습니다. 관리자에게 문의하세요.')
+        console.error(
+          '⚠️ user_routines 테이블이 없습니다.\n' +
           'Supabase 대시보드 > SQL Editor에서 supabase-setup.sql 파일의 내용을 실행해주세요.'
         )
       } else {
-        console.error('Error toggling save:', error)
-        alert('운동 저장 중 오류가 발생했습니다: ' + error.message)
+        setError(err.message || '저장 중 오류가 발생했습니다.')
+        console.error('Error toggling save:', err)
       }
+    } finally {
+      setSaving(false)
     }
   }
 
-  return { savedItems, loading, toggleSave, refetch: loadSavedRoutines }
+  return {
+    savedItems,
+    loading,
+    saving,
+    error,
+    toggleSave,
+    refetch: loadSavedRoutines,
+    clearError: () => setError(null)
+  }
 }
 
 // 완료한 날짜 관리
 export const useCompletedDates = (userId) => {
   const [completedDates, setCompletedDates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
-  useEffect(() => {
+  const loadCompletedDates = useCallback(async () => {
     if (!userId) {
       setLoading(false)
       return
     }
 
-    loadCompletedDates()
-  }, [userId])
+    setLoading(true)
+    setError(null)
 
-  const loadCompletedDates = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('exercise_logs')
         .select('date')
         .eq('user_id', userId)
         .eq('completed', true)
 
-      if (error) {
-        // PGRST205는 테이블이 없을 때 발생하는 에러
-        if (error.code === 'PGRST205') {
+      if (fetchError) {
+        if (fetchError.code === 'PGRST205') {
           console.warn(
             '⚠️ exercise_logs 테이블이 없습니다.\n' +
             'Supabase 대시보드 > SQL Editor에서 supabase-setup.sql 파일의 내용을 실행하세요.'
           )
-          return // 에러를 던지지 않고 빈 배열 반환
+          return
         }
-        throw error
+        throw fetchError
       }
 
-      const dates = data?.map((item) => item.date) || []
-      setCompletedDates(dates)
-    } catch (error) {
-      console.error('Error loading completed dates:', error)
+      setCompletedDates(data?.map((item) => item.date) || [])
+    } catch (err) {
+      console.error('Error loading completed dates:', err)
+      setError(err.message || '완료 기록을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    loadCompletedDates()
+  }, [loadCompletedDates])
 
   const toggleCompleteToday = async () => {
-    if (!userId) return
+    if (!userId || saving) return
 
     const today = new Date().toISOString().split('T')[0]
     const isCompleted = completedDates.includes(today)
+    const previousDates = [...completedDates]
+
+    // 낙관적 업데이트
+    setSaving(true)
+    setError(null)
+
+    if (isCompleted) {
+      setCompletedDates(completedDates.filter((date) => date !== today))
+    } else {
+      setCompletedDates([...completedDates, today])
+    }
 
     try {
       if (isCompleted) {
-        // 삭제
-        const { error } = await supabase
+        const { error: deleteError } = await supabase
           .from('exercise_logs')
           .delete()
           .eq('user_id', userId)
           .eq('date', today)
 
-        if (error) throw error
-        setCompletedDates(completedDates.filter((date) => date !== today))
+        if (deleteError) throw deleteError
       } else {
-        // 추가
-        const { error } = await supabase.from('exercise_logs').insert([
+        const { error: insertError } = await supabase.from('exercise_logs').insert([
           {
             user_id: userId,
             date: today,
@@ -160,28 +197,34 @@ export const useCompletedDates = (userId) => {
           },
         ])
 
-        if (error) throw error
-        setCompletedDates([...completedDates, today])
+        if (insertError) throw insertError
       }
-    } catch (error) {
-      // PGRST205는 테이블이 없을 때 발생하는 에러
-      if (error.code === 'PGRST205') {
-        alert(
-          '⚠️ exercise_logs 테이블이 없습니다.\n\n' +
+    } catch (err) {
+      // 롤백
+      setCompletedDates(previousDates)
+
+      if (err.code === 'PGRST205') {
+        setError('테이블이 설정되지 않았습니다. 관리자에게 문의하세요.')
+        console.error(
+          '⚠️ exercise_logs 테이블이 없습니다.\n' +
           'Supabase 대시보드 > SQL Editor에서 supabase-setup.sql 파일의 내용을 실행해주세요.'
         )
       } else {
-        console.error('Error toggling complete:', error)
-        alert('운동 완료 체크 중 오류가 발생했습니다: ' + error.message)
+        setError(err.message || '완료 체크 중 오류가 발생했습니다.')
+        console.error('Error toggling complete:', err)
       }
+    } finally {
+      setSaving(false)
     }
   }
 
   return {
     completedDates,
     loading,
+    saving,
+    error,
     toggleCompleteToday,
     refetch: loadCompletedDates,
+    clearError: () => setError(null)
   }
 }
-

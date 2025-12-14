@@ -71,3 +71,23 @@ CREATE POLICY "사용자는 자신의 기록만 조회/생성/삭제 가능"
   FOR ALL
   USING (auth.uid() = user_id);
 
+-- 5. 성능 최적화를 위한 인덱스 추가
+
+-- user_routines 인덱스
+CREATE INDEX IF NOT EXISTS idx_user_routines_user_id
+  ON user_routines(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_routines_exercise_id
+  ON user_routines(exercise_id);
+
+-- exercise_logs 인덱스
+CREATE INDEX IF NOT EXISTS idx_exercise_logs_user_id
+  ON exercise_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_exercise_logs_date
+  ON exercise_logs(date);
+CREATE INDEX IF NOT EXISTS idx_exercise_logs_user_date
+  ON exercise_logs(user_id, date);
+
+-- profiles 인덱스 (닉네임 검색용)
+CREATE INDEX IF NOT EXISTS idx_profiles_nickname
+  ON profiles(nickname);
+
