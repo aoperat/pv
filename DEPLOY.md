@@ -35,6 +35,7 @@ npm run deploy
 ```
 
 이 명령은:
+
 1. `npm run build` 실행 (환경변수는 `.env.local`에서 읽음)
 2. `dist/` 폴더를 `gh-pages` 브랜치에 푸시
 3. GitHub Pages가 자동으로 배포
@@ -61,10 +62,12 @@ npm run deploy
 3. 다음 두 개의 Secret 추가:
 
    **Secret 1:**
+
    - Name: `VITE_SUPABASE_URL`
    - Value: Supabase 프로젝트 URL (`.env.local`에서 복사)
 
    **Secret 2:**
+
    - Name: `VITE_SUPABASE_ANON_KEY`
    - Value: Supabase anon key (`.env.local`에서 복사)
 
@@ -108,6 +111,7 @@ git push origin main
 ### 빌드 확인
 
 로컬에서 빌드 테스트:
+
 ```bash
 npm run build
 npm run preview  # 빌드 결과 미리보기
@@ -122,4 +126,3 @@ npm run preview  # 빌드 결과 미리보기
 - 배포 후 페이지가 안 보이면: Settings > Pages에서 Source 확인
 - 빌드 실패 시: Actions 탭에서 에러 로그 확인
 - 환경변수 에러: GitHub Secrets가 올바르게 설정되었는지 확인
-
